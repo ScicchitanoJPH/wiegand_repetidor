@@ -2,7 +2,7 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 
-#define WD_W2_delayPulso 50  // milisegundos
+#define WD_W2_delayPulso 0.05  // milisegundos
 #define WD_W2_delayIntervalo 2  // milisegundos
 
 static gpio_num_t gpio_0_;
@@ -34,13 +34,13 @@ void encoderWiegand(uint32_t valor, gpio_num_t gpio_0, gpio_num_t gpio_1, uint8_
     // Envío código Wiegand
     while (i < cantidadBits) {
         if (variablePadded[i] == '0') {
-            printf('0');
+            //printf('0');
             gpio_set_level(gpio_0, 0);
             vTaskDelay(pdMS_TO_TICKS(WD_W2_delayPulso));
             gpio_set_level(gpio_0, 1);
             vTaskDelay(pdMS_TO_TICKS(WD_W2_delayIntervalo));
         } else {
-            printf('1');
+            //printf('1');
             gpio_set_level(gpio_1, 0);
             vTaskDelay(pdMS_TO_TICKS(WD_W2_delayPulso));
             gpio_set_level(gpio_1, 1);
@@ -62,47 +62,35 @@ void recorrerCharArray(char *valor) {
 }
 
 
-void encoderWiegandBits(const char *valor, gpio_num_t gpio_0, gpio_num_t gpio_1) {
+void encoderWiegandBits(const uint8_t *valor,size_t longitudBits, gpio_num_t gpio_0, gpio_num_t gpio_1,const char *TAG) {
     // Escribe separador + fecha + hora
     // (Asumo que log.escribeSeparador y log.escribeLineaLog son funciones que deben ser adaptadas)0
 
-    for (size_t i = 0; valor[i] != '\0'; ++i) {
+    
+    ESP_LOGE(TAG, "====================================");
+    ESP_LOGE(TAG, "Bits sended: %d\n", longitudBits);
+
+    ESP_LOGE(TAG, "Data sended : ");
+    for (size_t i = 0; i < longitudBits; i++) {
         // Accede a cada bit en la valor usando valor[i]
-        char bitActual = valor[i];
+        uint8_t bitActual = valor[i];
 
         // Procesa el bit, por ejemplo, imprímelo
-        //printf("%c ", bitActual);
-        if (bitActual == '0') {
-            printf("0");
+        if (bitActual == 0) {
+            ESP_LOGE(TAG, "%d - DOWN", bitActual);
             gpio_set_level(gpio_0, 0);
             vTaskDelay(pdMS_TO_TICKS(WD_W2_delayPulso));
+            ESP_LOGE(TAG, "!DOWN");
             gpio_set_level(gpio_0, 1);
             vTaskDelay(pdMS_TO_TICKS(WD_W2_delayIntervalo));
         } else {
-            printf("1");
+            ESP_LOGE(TAG, "%d - UP", bitActual);
             gpio_set_level(gpio_1, 0);
             vTaskDelay(pdMS_TO_TICKS(WD_W2_delayPulso));
+            ESP_LOGE(TAG, "!UP");
             gpio_set_level(gpio_1, 1);
             vTaskDelay(pdMS_TO_TICKS(WD_W2_delayIntervalo));
         }
     }
-    printf("\n");
-
-    //printf("Datos a enviar: ");
-    // Envío código Wiegand byte a byte
-    /*for (size_t i = 0; valor[i] != '\0'; ++i) {
-        if (valor[i] == '0') {
-            printf('0');
-            gpio_set_level(gpio_0, 0);
-            vTaskDelay(pdMS_TO_TICKS(WD_W2_delayPulso));
-            gpio_set_level(gpio_0, 1);
-            vTaskDelay(pdMS_TO_TICKS(WD_W2_delayIntervalo));
-        } else {
-            printf('1');
-            gpio_set_level(gpio_1, 0);
-            vTaskDelay(pdMS_TO_TICKS(WD_W2_delayPulso));
-            gpio_set_level(gpio_1, 1);
-            vTaskDelay(pdMS_TO_TICKS(WD_W2_delayIntervalo));
-        }
-    }*/
+    ESP_LOGE(TAG, "====================================");
 }
