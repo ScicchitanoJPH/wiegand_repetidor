@@ -16,6 +16,8 @@
     "idf.toolsPathWin": "C:\\Users\\diego.scicchitano\\.espressif",
     "idf.flashType": "UART",
     "files.associations": {
-        "wiegand.h": "c"
+        "wiegand.h": "c",
+        "task.h": "c",
+        "freertos.h": "c"
     }
 }

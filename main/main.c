@@ -85,7 +85,11 @@ static void task_decoder(void *arg)
                 printf("%d", (p.data[i] >> j) & 1);
             }
         printf("\n==========================================\n");
-        xQueueSend(queue_send_data, &p, portMAX_DELAY);
+        if (p.bits >= 20)
+        {
+            xQueueSend(queue_send_data, &p, portMAX_DELAY);
+        }
+        
     }
 }
 
@@ -109,7 +113,6 @@ void task_encoder(void *pvParameters)
             for (size_t i = 0; i < bytes + (tail ? 1 : 0); i++)
                 for (int j = 7; j >= 0; j--)
                 {
-                    //printf("%d", (receivedData.data[i] >> j) & 1);
                     valor[posValor] = (receivedData.data[i] >> j) & 1;
                     posValor++;
                 }
@@ -124,7 +127,7 @@ void task_encoder(void *pvParameters)
 
 void app_main()
 {
-
+    
     xTaskCreatePinnedToCore(task_decoder, TAG, configMINIMAL_STACK_SIZE * 4, NULL, 5, NULL, 0);
     xTaskCreatePinnedToCore(task_encoder, TAG_ENCODER_TASK, configMINIMAL_STACK_SIZE * 4, NULL, 5, NULL, 1);
 }

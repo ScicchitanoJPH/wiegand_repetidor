@@ -1,9 +1,10 @@
 #include "wiegand_sender.h"
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
+#include "esp_system.h"
 
-#define WD_W2_delayPulso 0.05  // milisegundos
-#define WD_W2_delayIntervalo 2  // milisegundos
+#define WD_W2_delayPulso_us 100  // milisegundos
+#define WD_W2_delayIntervalo_us 5000  // milisegundos
 
 static gpio_num_t gpio_0_;
 static gpio_num_t gpio_1_;
@@ -17,8 +18,8 @@ void initEncoder(gpio_num_t gpio_0, gpio_num_t gpio_1) {
     gpio_set_direction(gpio_1_, GPIO_MODE_OUTPUT);
 
     // Asigno un valor lógico 1 a los pines de salida Wiegand
-    gpio_set_level(gpio_0_, true);
-    gpio_set_level(gpio_1_, true);
+    gpio_set_level(gpio_0_, 1);
+    gpio_set_level(gpio_1_, 1);
 }
 
 void encoderWiegand(uint32_t valor, gpio_num_t gpio_0, gpio_num_t gpio_1, uint8_t cantidadBits) {
@@ -36,15 +37,19 @@ void encoderWiegand(uint32_t valor, gpio_num_t gpio_0, gpio_num_t gpio_1, uint8_
         if (variablePadded[i] == '0') {
             //printf('0');
             gpio_set_level(gpio_0, 0);
-            vTaskDelay(pdMS_TO_TICKS(WD_W2_delayPulso));
+            esp_rom_delay_us(100);
+            //vTaskDelay(pdMS_TO_TICKS(WD_W2_delayPulso));
             gpio_set_level(gpio_0, 1);
-            vTaskDelay(pdMS_TO_TICKS(WD_W2_delayIntervalo));
+            esp_rom_delay_us(5000);
+            //vTaskDelay(pdMS_TO_TICKS(WD_W2_delayIntervalo));
         } else {
             //printf('1');
             gpio_set_level(gpio_1, 0);
-            vTaskDelay(pdMS_TO_TICKS(WD_W2_delayPulso));
+            //vTaskDelay(pdMS_TO_TICKS(WD_W2_delayPulso));
+            esp_rom_delay_us(100);
             gpio_set_level(gpio_1, 1);
-            vTaskDelay(pdMS_TO_TICKS(WD_W2_delayIntervalo));
+            esp_rom_delay_us(5000);
+            //vTaskDelay(pdMS_TO_TICKS(WD_W2_delayIntervalo));
         }
 
         i++;
@@ -63,8 +68,6 @@ void recorrerCharArray(char *valor) {
 
 
 void encoderWiegandBits(const uint8_t *valor,size_t longitudBits, gpio_num_t gpio_0, gpio_num_t gpio_1,const char *TAG) {
-    // Escribe separador + fecha + hora
-    // (Asumo que log.escribeSeparador y log.escribeLineaLog son funciones que deben ser adaptadas)0
 
     
     ESP_LOGE(TAG, "====================================");
@@ -74,22 +77,20 @@ void encoderWiegandBits(const uint8_t *valor,size_t longitudBits, gpio_num_t gpi
     for (size_t i = 0; i < longitudBits; i++) {
         // Accede a cada bit en la valor usando valor[i]
         uint8_t bitActual = valor[i];
-
+        ESP_LOGE(TAG, "%d", bitActual);
+        gpio_set_level(gpio_0_, 1);
+        gpio_set_level(gpio_1_, 1);
         // Procesa el bit, por ejemplo, imprímelo
         if (bitActual == 0) {
-            ESP_LOGE(TAG, "%d - DOWN", bitActual);
             gpio_set_level(gpio_0, 0);
-            vTaskDelay(pdMS_TO_TICKS(WD_W2_delayPulso));
-            ESP_LOGE(TAG, "!DOWN");
+            esp_rom_delay_us(WD_W2_delayPulso_us);
             gpio_set_level(gpio_0, 1);
-            vTaskDelay(pdMS_TO_TICKS(WD_W2_delayIntervalo));
+            esp_rom_delay_us(WD_W2_delayIntervalo_us);
         } else {
-            ESP_LOGE(TAG, "%d - UP", bitActual);
             gpio_set_level(gpio_1, 0);
-            vTaskDelay(pdMS_TO_TICKS(WD_W2_delayPulso));
-            ESP_LOGE(TAG, "!UP");
+            esp_rom_delay_us(WD_W2_delayPulso_us);
             gpio_set_level(gpio_1, 1);
-            vTaskDelay(pdMS_TO_TICKS(WD_W2_delayIntervalo));
+            esp_rom_delay_us(WD_W2_delayIntervalo_us);
         }
     }
     ESP_LOGE(TAG, "====================================");
