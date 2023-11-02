@@ -69,15 +69,10 @@ void recorrerCharArray(char *valor) {
 
 void encoderWiegandBits(const uint8_t *valor,size_t longitudBits, gpio_num_t gpio_0, gpio_num_t gpio_1,const char *TAG) {
 
-    
-    ESP_LOGE(TAG, "====================================");
-    ESP_LOGE(TAG, "Bits sended: %d\n", longitudBits);
 
-    ESP_LOGE(TAG, "Data sended : ");
     for (size_t i = 0; i < longitudBits; i++) {
         // Accede a cada bit en la valor usando valor[i]
         uint8_t bitActual = valor[i];
-        ESP_LOGE(TAG, "%d", bitActual);
         gpio_set_level(gpio_0_, 1);
         gpio_set_level(gpio_1_, 1);
         // Procesa el bit, por ejemplo, imprímelo
@@ -93,5 +88,4 @@ void encoderWiegandBits(const uint8_t *valor,size_t longitudBits, gpio_num_t gpi
             esp_rom_delay_us(WD_W2_delayIntervalo_us);
         }
     }
-    ESP_LOGE(TAG, "====================================");
 }

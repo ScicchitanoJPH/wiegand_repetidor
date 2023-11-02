@@ -11,8 +11,16 @@
 #define CONFIG_EXAMPLE_D0_GPIO 26
 #define CONFIG_EXAMPLE_D1_GPIO 27
 
-#define WD_ENCODER_D0_GPIO 33
-#define WD_ENCODER_D1_GPIO 32
+#define WD1_ENCODER_D0_GPIO 33
+#define WD1_ENCODER_D1_GPIO 32
+
+#define WD2_ENCODER_D0_GPIO 18
+#define WD2_ENCODER_D1_GPIO 19
+
+
+
+
+
 // Define la etiqueta para la tarea
 #define TAG_ENCODER_TASK "task_encoder"
 
@@ -97,14 +105,16 @@ static void task_decoder(void *arg)
 void task_encoder(void *pvParameters)
 {
     // Código de la tarea
-    initEncoder(WD_ENCODER_D0_GPIO, WD_ENCODER_D1_GPIO);
+    initEncoder(WD1_ENCODER_D0_GPIO, WD1_ENCODER_D1_GPIO);
+
+    initEncoder(WD2_ENCODER_D0_GPIO, WD2_ENCODER_D1_GPIO);
 
 
     data_packet_t receivedData;
     while (1)
     {
         if(xQueueReceive(queue_send_data, &receivedData, portMAX_DELAY) == pdTRUE) {
-            ESP_LOGE(TAG_ENCODER_TASK, "Enviando wiegand");
+            
             
             int bytes = receivedData.bits / 8;
             int tail = receivedData.bits % 8;
@@ -118,8 +128,19 @@ void task_encoder(void *pvParameters)
                 }
             
 
-
-            encoderWiegandBits(valor, receivedData.bits , WD_ENCODER_D0_GPIO, WD_ENCODER_D1_GPIO, TAG_ENCODER_TASK);
+            if (valor[0])
+            {
+                ESP_LOGE(TAG_ENCODER_TASK,"ZKTECO Card");
+                ESP_LOGE(TAG_ENCODER_TASK, "Enviando wiegand puerto 1");
+                encoderWiegandBits(valor, receivedData.bits , WD1_ENCODER_D0_GPIO, WD1_ENCODER_D1_GPIO, TAG_ENCODER_TASK);
+                ESP_LOGE(TAG_ENCODER_TASK, "Enviado");
+            }else{
+                ESP_LOGE(TAG_ENCODER_TASK,"WHITE Card");
+                ESP_LOGE(TAG_ENCODER_TASK, "Enviando wiegand puerto 2");
+                encoderWiegandBits(valor, receivedData.bits , WD2_ENCODER_D0_GPIO, WD2_ENCODER_D1_GPIO, TAG_ENCODER_TASK);
+                ESP_LOGE(TAG_ENCODER_TASK, "Enviado");
+            }
+            
             vTaskDelay(pdMS_TO_TICKS(1000));
         }
     }
