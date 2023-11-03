@@ -17,19 +17,17 @@
 #define WD2_ENCODER_D0_GPIO 18
 #define WD2_ENCODER_D1_GPIO 19
 
-
-
-
-
 // Define la etiqueta para la tarea
 #define TAG_ENCODER_TASK "task_encoder"
+
+
+#define MIN_CANTIDAD_BITS_VALIDO 20
 
 static const char *TAG = "wiegand_reader";
 
 static wiegand_reader_t reader;
 static QueueHandle_t queue = NULL;
 static QueueHandle_t queue_send_data = NULL;
-
 
 // Single data packet
 typedef struct
@@ -81,25 +79,43 @@ static void task_decoder(void *arg)
         ESP_LOGI(TAG, "Waiting for Wiegand data...");
         xQueueReceive(queue, &p, portMAX_DELAY);
 
-        // dump received data
-        printf("==========================================\n");
-        printf("Bits received: %d\n", p.bits);
-        printf("Received data:");
-        int bytes = p.bits / 8;
-        int tail = p.bits % 8;
-        for (size_t i = 0; i < bytes + (tail ? 1 : 0); i++)
-            for (int j = 7; j >= 0; j--)
-            {
-                printf("%d", (p.data[i] >> j) & 1);
-            }
-        printf("\n==========================================\n");
-        if (p.bits >= 20)
+        if (p.bits >= MIN_CANTIDAD_BITS_VALIDO && p.bits <= 40)
         {
+            // dump received data
+            printf("==========================================\n");
+            printf("Bits received: %d\n", p.bits);
+            printf("Received data:");
+            int bytes = p.bits / 8;
+            int tail = p.bits % 8;
+            for (size_t i = 0; i < bytes + (tail ? 1 : 0); i++)
+                for (int j = 7; j >= 0; j--)
+                {
+                    printf("%d", (p.data[i] >> j) & 1);
+                }
+            printf("\n==========================================\n");
             xQueueSend(queue_send_data, &p, portMAX_DELAY);
         }
-        
     }
 }
+
+
+
+
+void procesarValor(uint8_t *valor, size_t cant_bits) {
+    if (valor[0]) {
+        ESP_LOGE(TAG_ENCODER_TASK, "ZKTECO Card");
+        ESP_LOGE(TAG_ENCODER_TASK, "Enviando wiegand puerto 1");
+        encoderWiegandBits(valor, cant_bits, WD1_ENCODER_D0_GPIO, WD1_ENCODER_D1_GPIO, TAG_ENCODER_TASK);
+        ESP_LOGE(TAG_ENCODER_TASK, "Enviado");
+    } else {
+        ESP_LOGE(TAG_ENCODER_TASK, "WHITE Card");
+        ESP_LOGE(TAG_ENCODER_TASK, "Enviando wiegand puerto 2");
+        encoderWiegandBits(valor, cant_bits, WD2_ENCODER_D0_GPIO, WD2_ENCODER_D1_GPIO, TAG_ENCODER_TASK);
+        ESP_LOGE(TAG_ENCODER_TASK, "Enviado");
+    }
+}
+
+
 
 // Implementación de la función de tarea
 void task_encoder(void *pvParameters)
@@ -109,13 +125,12 @@ void task_encoder(void *pvParameters)
 
     initEncoder(WD2_ENCODER_D0_GPIO, WD2_ENCODER_D1_GPIO);
 
-
     data_packet_t receivedData;
     while (1)
     {
-        if(xQueueReceive(queue_send_data, &receivedData, portMAX_DELAY) == pdTRUE) {
-            
-            
+        if (xQueueReceive(queue_send_data, &receivedData, portMAX_DELAY) == pdTRUE)
+        {
+
             int bytes = receivedData.bits / 8;
             int tail = receivedData.bits % 8;
             uint8_t valor[receivedData.bits];
@@ -126,21 +141,10 @@ void task_encoder(void *pvParameters)
                     valor[posValor] = (receivedData.data[i] >> j) & 1;
                     posValor++;
                 }
-            
 
-            if (valor[0])
-            {
-                ESP_LOGE(TAG_ENCODER_TASK,"ZKTECO Card");
-                ESP_LOGE(TAG_ENCODER_TASK, "Enviando wiegand puerto 1");
-                encoderWiegandBits(valor, receivedData.bits , WD1_ENCODER_D0_GPIO, WD1_ENCODER_D1_GPIO, TAG_ENCODER_TASK);
-                ESP_LOGE(TAG_ENCODER_TASK, "Enviado");
-            }else{
-                ESP_LOGE(TAG_ENCODER_TASK,"WHITE Card");
-                ESP_LOGE(TAG_ENCODER_TASK, "Enviando wiegand puerto 2");
-                encoderWiegandBits(valor, receivedData.bits , WD2_ENCODER_D0_GPIO, WD2_ENCODER_D1_GPIO, TAG_ENCODER_TASK);
-                ESP_LOGE(TAG_ENCODER_TASK, "Enviado");
-            }
-            
+
+            procesarValor(valor, receivedData.bits);
+
             vTaskDelay(pdMS_TO_TICKS(1000));
         }
     }
@@ -148,7 +152,7 @@ void task_encoder(void *pvParameters)
 
 void app_main()
 {
-    
+
     xTaskCreatePinnedToCore(task_decoder, TAG, configMINIMAL_STACK_SIZE * 4, NULL, 5, NULL, 0);
     xTaskCreatePinnedToCore(task_encoder, TAG_ENCODER_TASK, configMINIMAL_STACK_SIZE * 4, NULL, 5, NULL, 1);
 }
