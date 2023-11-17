@@ -20,8 +20,12 @@
 // Define la etiqueta para la tarea
 #define TAG_ENCODER_TASK "task_encoder"
 
-
 #define MIN_CANTIDAD_BITS_VALIDO 20
+
+#define WD_PORT1_LONGITUDES {32, 26, 37}
+#define WD_PORT2_LONGITUDES {35, 48}
+
+
 
 static const char *TAG = "wiegand_reader";
 
@@ -98,31 +102,79 @@ static void task_decoder(void *arg)
     }
 }
 
+uint8_t selectWDPort(size_t cant_bits){
+
+    uint8_t WDPort1Array[] = WD_PORT1_LONGITUDES;
+    uint8_t WDPort2Array[] = WD_PORT2_LONGITUDES;
+
+    for (int i = 0; i < sizeof(WDPort1Array) / sizeof(WDPort1Array[0]); ++i) {
+        printf("%d ", WDPort1Array[i]);
+        if (cant_bits == WDPort1Array[i]){
+            return 1;
+        }
+    }
+
+    printf("--------\n");
+
+    for (int i = 0; i < sizeof(WDPort2Array) / sizeof(WDPort2Array[0]); ++i) {
+        printf("%d ", WDPort2Array[i]);
+        if (cant_bits == WDPort2Array[i]){
+            return 2;
+        }
+    }
+
+    return 0;
 
 
+}
 
-void procesarValor(uint8_t *valor, size_t cant_bits) {
-    if (valor[0]) {
+void procesarValor(uint8_t *valor, size_t cant_bits)
+{
+
+    uint8_t senderWDPort = 0;
+    senderWDPort = selectWDPort(cant_bits);
+
+    switch (senderWDPort)
+    {
+    case 1:
         ESP_LOGE(TAG_ENCODER_TASK, "ZKTECO Card");
         ESP_LOGE(TAG_ENCODER_TASK, "Enviando wiegand puerto 1");
         encoderWiegandBits(valor, cant_bits, WD1_ENCODER_D0_GPIO, WD1_ENCODER_D1_GPIO, TAG_ENCODER_TASK);
         ESP_LOGE(TAG_ENCODER_TASK, "Enviado");
-    } else {
+        break;
+
+    case 2:
         ESP_LOGE(TAG_ENCODER_TASK, "WHITE Card");
         ESP_LOGE(TAG_ENCODER_TASK, "Enviando wiegand puerto 2");
         encoderWiegandBits(valor, cant_bits, WD2_ENCODER_D0_GPIO, WD2_ENCODER_D1_GPIO, TAG_ENCODER_TASK);
         ESP_LOGE(TAG_ENCODER_TASK, "Enviado");
+        break;
+    
+    default:
+        break;
     }
+
+
+    /*if (valor[0])
+    {
+        ESP_LOGE(TAG_ENCODER_TASK, "ZKTECO Card");
+        ESP_LOGE(TAG_ENCODER_TASK, "Enviando wiegand puerto 1");
+        encoderWiegandBits(valor, cant_bits, WD1_ENCODER_D0_GPIO, WD1_ENCODER_D1_GPIO, TAG_ENCODER_TASK);
+        ESP_LOGE(TAG_ENCODER_TASK, "Enviado");
+    }
+    else
+    {
+        ESP_LOGE(TAG_ENCODER_TASK, "WHITE Card");
+        ESP_LOGE(TAG_ENCODER_TASK, "Enviando wiegand puerto 2");
+        encoderWiegandBits(valor, cant_bits, WD2_ENCODER_D0_GPIO, WD2_ENCODER_D1_GPIO, TAG_ENCODER_TASK);
+        ESP_LOGE(TAG_ENCODER_TASK, "Enviado");
+    }*/
 }
-
-
 
 // Implementación de la función de tarea
 void task_encoder(void *pvParameters)
 {
-    // Código de la tarea
     initEncoder(WD1_ENCODER_D0_GPIO, WD1_ENCODER_D1_GPIO);
-
     initEncoder(WD2_ENCODER_D0_GPIO, WD2_ENCODER_D1_GPIO);
 
     data_packet_t receivedData;
@@ -141,7 +193,6 @@ void task_encoder(void *pvParameters)
                     valor[posValor] = (receivedData.data[i] >> j) & 1;
                     posValor++;
                 }
-
 
             procesarValor(valor, receivedData.bits);
 
