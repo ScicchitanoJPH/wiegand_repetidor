@@ -1,53 +1,35 @@
-| Supported Targets | ESP32 | ESP32-C2 | ESP32-C3 | ESP32-C6 | ESP32-H2 | ESP32-S2 | ESP32-S3 |
-| ----------------- | ----- | -------- | -------- | -------- | -------- | -------- | -------- |
+# Control de Acceso Automatizado con ESP32 y Wiegand
 
-# Hello World Example
+Este código en C tiene como objetivo automatizar el acceso de dos empresas distintas que utilizan tarjetas RFID anunciadas a través de un mismo lector Wiegand. Dependiendo de la empresa a la que pertenezca la tarjeta, el sistema dirigirá al usuario a través de la puerta correspondiente. El proceso se realiza de la siguiente manera:
 
-Starts a FreeRTOS task to print "Hello World".
+1. **Lectura y Decodificación:**
+   - Un lector Wiegand está configurado para escuchar datos de tarjetas RFID en los pines GPIO especificados.
+   - El sistema identifica el formato de la tarjeta, ya que cada empresa tiene un formato de tarjeta distinto.
 
-(See the README.md file in the upper level 'examples' directory for more information about examples.)
+2. **Selección de Puerta:**
+   - Si la tarjeta pertenece a la Empresa A, el sistema retransmite el dato Wiegand al Puerto 1.
+   - Si la tarjeta pertenece a la Empresa B, el sistema retransmite el dato Wiegand al Puerto 2.
 
-## How to use example
+## Configuración
 
-Follow detailed instructions provided specifically for this example.
+- **Configuración del Lector:**
+  - Establece los pines GPIO para el lector Wiegand (`CONFIG_EXAMPLE_D0_GPIO`, `CONFIG_EXAMPLE_D1_GPIO`).
+  - Define los formatos de tarjeta admitidos por cada empresa.
 
-Select the instructions depending on Espressif chip installed on your development board:
+- **Configuración de Puertos:**
+  - Configura los pines GPIO para los Puertos Wiegand 1 y 2 (`WD1_ENCODER_D0_GPIO`, `WD1_ENCODER_D1_GPIO`, `WD2_ENCODER_D0_GPIO`, `WD2_ENCODER_D1_GPIO`).
+  - Asocia cada formato de tarjeta a un puerto Wiegand.
 
-- [ESP32 Getting Started Guide](https://docs.espressif.com/projects/esp-idf/en/stable/get-started/index.html)
-- [ESP32-S2 Getting Started Guide](https://docs.espressif.com/projects/esp-idf/en/latest/esp32s2/get-started/index.html)
+## Uso
 
+1. Flashea el código en tu dispositivo ESP32.
+2. Conecta el lector Wiegand y configura los pines GPIO según la empresa.
+3. Conecta los Puertos Wiegand a las puertas correspondientes.
+4. Monitorea la salida de la consola para la identificación y retransmisión de datos Wiegand.
 
-## Example folder contents
+## Notas
 
-The project **hello_world** contains one source file in C language [hello_world_main.c](main/hello_world_main.c). The file is located in folder [main](main).
+- El código utiliza tareas y colas FreeRTOS para procesamiento asíncrono.
+- La función `procesarValor` selecciona el puerto Wiegand adecuado según el formato de la tarjeta y retransmite los datos a la puerta correspondiente.
 
-ESP-IDF projects are built using CMake. The project build configuration is contained in `CMakeLists.txt` files that provide set of directives and instructions describing the project's source files and targets (executable, library, or both).
-
-Below is short explanation of remaining files in the project folder.
-
-```
-├── CMakeLists.txt
-├── pytest_hello_world.py      Python script used for automated testing
-├── main
-│   ├── CMakeLists.txt
-│   └── hello_world_main.c
-└── README.md                  This is the file you are currently reading
-```
-
-For more information on structure and contents of ESP-IDF projects, please refer to Section [Build System](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-guides/build-system.html) of the ESP-IDF Programming Guide.
-
-## Troubleshooting
-
-* Program upload failure
-
-    * Hardware connection is not correct: run `idf.py -p PORT monitor`, and reboot your board to see if there are any output logs.
-    * The baud rate for downloading is too high: lower your baud rate in the `menuconfig` menu, and try again.
-
-## Technical support and feedback
-
-Please use the following feedback channels:
-
-* For technical queries, go to the [esp32.com](https://esp32.com/) forum
-* For a feature request or bug report, create a [GitHub issue](https://github.com/espressif/esp-idf/issues)
-
-We will get back to you as soon as possible.
+Siéntete libre de adaptar el código según los formatos de tarjeta y la configuración específica de tu sistema.
