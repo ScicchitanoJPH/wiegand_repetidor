@@ -8,6 +8,8 @@
 #include <esp_log.h>
 #include <string.h>
 #include "esp_event_loop.h"
+#include "esp_netif.h"
+#include "esp_http_client.h"
 
 
 
@@ -47,6 +49,70 @@ typedef struct
     size_t bits;
 } data_packet_t;
 
+
+
+
+esp_err_t client_event_post_handler(esp_http_client_event_handle_t evt)
+{
+    switch (evt->event_id)
+    {
+    case HTTP_EVENT_ON_DATA:
+        printf("HTTP_EVENT_ON_DATA: %.*s\n", evt->data_len, (char *)evt->data);
+        break;
+
+    default:
+        break;
+    }
+    return ESP_OK;
+}
+
+
+static void post_rest_function(char *valor,char* port)
+{
+    
+    printf("DATA : %s\n", valor);
+
+    char url[120] = "http://httpbin.org/post";
+    strcat(url, "?data=");
+    strcat(url, valor);
+    strcat(url, "&port=");
+    strcat(url, port);
+
+    
+    
+    //test...&port=e");
+    esp_http_client_config_t config_post = {
+        //http://worldclockapi.com/api/json/utc/now
+        .url = url,
+        .method = HTTP_METHOD_POST,
+        .cert_pem = NULL,
+        .event_handler = client_event_post_handler,
+        .timeout_ms = 30000};
+        
+    esp_http_client_handle_t client = esp_http_client_init(&config_post);
+
+    char  *post_data = "test ...";
+    esp_http_client_set_post_field(client, post_data, strlen(post_data));
+    esp_http_client_set_header(client, "Content-Type", "application/json");
+
+    esp_http_client_perform(client);
+    esp_http_client_cleanup(client);
+}
+
+void convertir_a_string(uint8_t *valor, char *valor_str, size_t max_size) {
+    // Inicializar la cadena para asegurar que esté vacía
+    valor_str[0] = '\0';
+
+    for (size_t i = 0; i < max_size; i++) {
+        char temp_str[5];  // Tamaño suficiente para almacenar un número de un solo dígito
+        snprintf(temp_str, sizeof(temp_str), "%u", valor[i]);
+        strncat(valor_str, temp_str, max_size - strlen(valor_str) - 1);  // Evitar desbordamiento del búfer
+
+        if (i == max_size) {
+            strncat(valor_str, "", max_size - strlen(valor_str) - 1);  // Agregar una coma entre los valores
+        }
+    }
+}
 
 // callback on new data in reader
 static void reader_callback(wiegand_reader_t *r)
@@ -142,12 +208,23 @@ void procesarValor(uint8_t *valor, size_t cant_bits)
     uint8_t senderWDPort = 0;
     senderWDPort = selectWDPort(cant_bits);
 
+    char valor_str[100];
+    convertir_a_string(valor, valor_str, cant_bits);
+    valor_str[cant_bits-1] = '\0';
+    printf("Cadena de valores: %s\n", valor_str);
+
+    char port_str[5];  // Ajusta el tamaño según tus necesidades
+    snprintf(port_str, sizeof(port_str), "%u", senderWDPort);
+    
+    
+
     switch (senderWDPort)
     {
     case 1:
         ESP_LOGE(TAG_ENCODER_TASK, "ZKTECO Card");
         ESP_LOGE(TAG_ENCODER_TASK, "Enviando wiegand puerto 1");
         encoderWiegandBits(valor, cant_bits, WD1_ENCODER_D0_GPIO, WD1_ENCODER_D1_GPIO, TAG_ENCODER_TASK);
+        post_rest_function(valor_str,port_str);
         ESP_LOGE(TAG_ENCODER_TASK, "Enviado");
         break;
 
@@ -155,28 +232,13 @@ void procesarValor(uint8_t *valor, size_t cant_bits)
         ESP_LOGE(TAG_ENCODER_TASK, "WHITE Card");
         ESP_LOGE(TAG_ENCODER_TASK, "Enviando wiegand puerto 2");
         encoderWiegandBits(valor, cant_bits, WD2_ENCODER_D0_GPIO, WD2_ENCODER_D1_GPIO, TAG_ENCODER_TASK);
+        post_rest_function(valor_str,port_str);
         ESP_LOGE(TAG_ENCODER_TASK, "Enviado");
         break;
     
     default:
         break;
     }
-
-
-    /*if (valor[0])
-    {
-        ESP_LOGE(TAG_ENCODER_TASK, "ZKTECO Card");
-        ESP_LOGE(TAG_ENCODER_TASK, "Enviando wiegand puerto 1");
-        encoderWiegandBits(valor, cant_bits, WD1_ENCODER_D0_GPIO, WD1_ENCODER_D1_GPIO, TAG_ENCODER_TASK);
-        ESP_LOGE(TAG_ENCODER_TASK, "Enviado");
-    }
-    else
-    {
-        ESP_LOGE(TAG_ENCODER_TASK, "WHITE Card");
-        ESP_LOGE(TAG_ENCODER_TASK, "Enviando wiegand puerto 2");
-        encoderWiegandBits(valor, cant_bits, WD2_ENCODER_D0_GPIO, WD2_ENCODER_D1_GPIO, TAG_ENCODER_TASK);
-        ESP_LOGE(TAG_ENCODER_TASK, "Enviado");
-    }*/
 }
 
 // Implementación de la función de tarea
@@ -213,13 +275,17 @@ void task_encoder(void *pvParameters)
 
 
 
-
-
 void app_main()
 {
     wifi_init();
 
-    xTaskCreatePinnedToCore(task_decoder, TAG, configMINIMAL_STACK_SIZE * 4, NULL, 5, NULL, 0);
+    xTaskCreatePinnedToCore(task_decoder, TAG, configMINIMAL_STACK_SIZE * 4, NULL, 5, NULL, 1);
     xTaskCreatePinnedToCore(task_encoder, TAG_ENCODER_TASK, configMINIMAL_STACK_SIZE * 4, NULL, 5, NULL, 1);
-    vTaskDelay(3000);
+    vTaskDelay(300);
+    /*uint8_t data[5] = {4,0,5,1,3};
+    char valor_str[100];
+    convertir_a_string(data, valor_str, sizeof(data)/sizeof(uint8_t));
+    printf("Cadena de valores: %s\n", valor_str);*/
+    
+    //post_rest_function(valor_str,7);
 }
