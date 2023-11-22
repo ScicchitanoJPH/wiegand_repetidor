@@ -4,8 +4,15 @@
 #include <freertos/queue.h>
 #include "libs/wiegand/wiegand.h"
 #include "libs/wiegand_sender/wiegand_sender.h"
+#include "libs/WIFI_driver/WIFI_driver.h"
 #include <esp_log.h>
 #include <string.h>
+#include "esp_event_loop.h"
+
+
+
+
+
 
 #define CONFIG_EXAMPLE_BUF_SIZE 100
 #define CONFIG_EXAMPLE_D0_GPIO 26
@@ -39,6 +46,7 @@ typedef struct
     uint8_t data[CONFIG_EXAMPLE_BUF_SIZE];
     size_t bits;
 } data_packet_t;
+
 
 // callback on new data in reader
 static void reader_callback(wiegand_reader_t *r)
@@ -201,9 +209,17 @@ void task_encoder(void *pvParameters)
     }
 }
 
+
+
+
+
+
+
 void app_main()
 {
+    wifi_init();
 
     xTaskCreatePinnedToCore(task_decoder, TAG, configMINIMAL_STACK_SIZE * 4, NULL, 5, NULL, 0);
     xTaskCreatePinnedToCore(task_encoder, TAG_ENCODER_TASK, configMINIMAL_STACK_SIZE * 4, NULL, 5, NULL, 1);
+    vTaskDelay(3000);
 }
