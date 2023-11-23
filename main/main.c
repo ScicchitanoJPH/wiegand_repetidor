@@ -26,7 +26,7 @@
 #define TAG_REQUEST_TASK "task_request"
 
 
-
+#define IS_REQUEST_ACTIVATED false
 
 
 #define MIN_CANTIDAD_BITS_VALIDO 20
@@ -77,7 +77,7 @@ void convertir_a_string(uint8_t *valor, char *valor_str, size_t max_size)
 }
 
 // callback on new data in reader
-static void reader_callback(wiegand_reader_t *r)
+void reader_callback(wiegand_reader_t *r)
 {
     // you can decode raw data from reader buffer here, but remember:
     // reader will ignore any new incoming data while executing callback
@@ -91,7 +91,7 @@ static void reader_callback(wiegand_reader_t *r)
     xQueueSendToBack(queue, &p, 0);
 }
 
-static void task_decoder(void *arg)
+void task_decoder(void *arg)
 {
     
 
@@ -211,7 +211,7 @@ void task_encoder(void *pvParameters)
 
             receivedData.port = procesarValor(receivedData.data_decoded, receivedData.bits);
 
-            xQueueSend(queue_request_data, &receivedData, portMAX_DELAY);
+            IS_REQUEST_ACTIVATED ? xQueueSend(queue_request_data, &receivedData, portMAX_DELAY) : 0;
 
             vTaskDelay(pdMS_TO_TICKS(1000));
         }
@@ -260,24 +260,34 @@ void queue_create(){
         ESP_ERROR_CHECK(ESP_ERR_NO_MEM);
     }
 
-    // Create queue
-    queue_request_data = xQueueCreate(5, sizeof(data_packet_t));
-    if (!queue_request_data)
-    {
-        ESP_LOGE(TAG_DECODER_TASK, "Error creating queue");
-        ESP_ERROR_CHECK(ESP_ERR_NO_MEM);
+    if(IS_REQUEST_ACTIVATED){
+        // Create queue
+        queue_request_data = xQueueCreate(5, sizeof(data_packet_t));
+        if (!queue_request_data)
+        {
+            ESP_LOGE(TAG_DECODER_TASK, "Error creating queue");
+            ESP_ERROR_CHECK(ESP_ERR_NO_MEM);
+        }
     }
 }
 
 void app_main()
 {
-    wifi_init();
+    
+    IS_REQUEST_ACTIVATED ? wifi_init() : 0;
+
 
     queue_create();
 
-    xTaskCreatePinnedToCore(task_decoder, TAG_DECODER_TASK, configMINIMAL_STACK_SIZE * 4, NULL, 5, NULL, 1);
+
+    if(IS_REQUEST_ACTIVATED){
+        xTaskCreatePinnedToCore(task_decoder, TAG_DECODER_TASK, configMINIMAL_STACK_SIZE * 4, NULL, 5, NULL, 1);
+        xTaskCreatePinnedToCore(task_request, TAG_REQUEST_TASK, configMINIMAL_STACK_SIZE * 4, NULL, 5, NULL, 0);
+    }else{
+        xTaskCreatePinnedToCore(task_decoder, TAG_DECODER_TASK, configMINIMAL_STACK_SIZE * 4, NULL, 5, NULL, 0);
+    }
+    
     xTaskCreatePinnedToCore(task_encoder, TAG_ENCODER_TASK, configMINIMAL_STACK_SIZE * 4, NULL, 5, NULL, 1);
 
-    xTaskCreatePinnedToCore(task_request, TAG_REQUEST_TASK, configMINIMAL_STACK_SIZE * 4, NULL, 5, NULL, 0);
-    vTaskDelay(300);
+    vTaskDelay(3000);
 }
