@@ -9,6 +9,7 @@
 #include <esp_log.h>
 #include <string.h>
 #include "esp_event_loop.h"
+#include "unity.h"
 
 #define CONFIG_EXAMPLE_BUF_SIZE 100
 #define CONFIG_EXAMPLE_D0_GPIO 26
@@ -27,6 +28,7 @@
 
 
 #define IS_REQUEST_ACTIVATED false
+#define IS_TEST_ACTIVATED false
 
 
 #define MIN_CANTIDAD_BITS_VALIDO 20
@@ -58,10 +60,13 @@ typedef struct
 
 
 
+
 void convertir_a_string(uint8_t *valor, char *valor_str, size_t max_size)
 {
     // Inicializar la cadena para asegurar que esté vacía
     valor_str[0] = '\0';
+
+    max_size++;
 
     for (size_t i = 0; i < max_size; i++)
     {
@@ -76,7 +81,6 @@ void convertir_a_string(uint8_t *valor, char *valor_str, size_t max_size)
     }
 }
 
-// callback on new data in reader
 void reader_callback(wiegand_reader_t *r)
 {
     // you can decode raw data from reader buffer here, but remember:
@@ -91,39 +95,6 @@ void reader_callback(wiegand_reader_t *r)
     xQueueSendToBack(queue, &p, 0);
 }
 
-void task_decoder(void *arg)
-{
-    
-
-    // Initialize reader
-    ESP_ERROR_CHECK(wiegand_reader_init(&reader, CONFIG_EXAMPLE_D0_GPIO, CONFIG_EXAMPLE_D1_GPIO,
-                                        true, CONFIG_EXAMPLE_BUF_SIZE, reader_callback, WIEGAND_MSB_FIRST, WIEGAND_LSB_FIRST));
-
-    data_packet_t p;
-    while (1)
-    {
-        ESP_LOGI(TAG_DECODER_TASK, "Waiting for Wiegand data...");
-        xQueueReceive(queue, &p, portMAX_DELAY);
-
-        if (p.bits >= MIN_CANTIDAD_BITS_VALIDO && p.bits <= 40)
-        {
-            // dump received data
-            printf("==========================================\n");
-            printf("Bits received: %d\n", p.bits);
-            printf("Received data:");
-            int bytes = p.bits / 8;
-            int tail = p.bits % 8;
-            for (size_t i = 0; i < bytes + (tail ? 1 : 0); i++)
-                for (int j = 7; j >= 0; j--)
-                {
-                    printf("%d", (p.data[i] >> j) & 1);
-                }
-            printf("\n==========================================\n");
-            xQueueSend(queue_send_data, &p, portMAX_DELAY);
-        }
-    }
-}
-
 uint8_t selectWDPort(size_t cant_bits)
 {
 
@@ -132,18 +103,15 @@ uint8_t selectWDPort(size_t cant_bits)
 
     for (int i = 0; i < sizeof(WDPort1Array) / sizeof(WDPort1Array[0]); ++i)
     {
-        printf("%d ", WDPort1Array[i]);
         if (cant_bits == WDPort1Array[i])
         {
             return 1;
         }
     }
 
-    printf("--------\n");
 
     for (int i = 0; i < sizeof(WDPort2Array) / sizeof(WDPort2Array[0]); ++i)
     {
-        printf("%d ", WDPort2Array[i]);
         if (cant_bits == WDPort2Array[i])
         {
             return 2;
@@ -184,7 +152,43 @@ uint8_t procesarValor(uint8_t *valor, size_t cant_bits)
     return senderWDPort;
 }
 
-// Implementación de la función de tarea
+
+
+
+
+void task_decoder(void *arg)
+{
+    
+
+    // Initialize reader
+    ESP_ERROR_CHECK(wiegand_reader_init(&reader, CONFIG_EXAMPLE_D0_GPIO, CONFIG_EXAMPLE_D1_GPIO,
+                                        true, CONFIG_EXAMPLE_BUF_SIZE, reader_callback, WIEGAND_MSB_FIRST, WIEGAND_LSB_FIRST));
+
+    data_packet_t p;
+    while (1)
+    {
+        ESP_LOGI(TAG_DECODER_TASK, "Waiting for Wiegand data...");
+        xQueueReceive(queue, &p, portMAX_DELAY);
+
+        if (p.bits >= MIN_CANTIDAD_BITS_VALIDO && p.bits <= 40)
+        {
+            // dump received data
+            printf("==========================================\n");
+            printf("Bits received: %d\n", p.bits);
+            printf("Received data:");
+            int bytes = p.bits / 8;
+            int tail = p.bits % 8;
+            for (size_t i = 0; i < bytes + (tail ? 1 : 0); i++)
+                for (int j = 7; j >= 0; j--)
+                {
+                    printf("%d", (p.data[i] >> j) & 1);
+                }
+            printf("\n==========================================\n");
+            xQueueSend(queue_send_data, &p, portMAX_DELAY);
+        }
+    }
+}
+
 void task_encoder(void *pvParameters)
 {
     initEncoder(WD1_ENCODER_D0_GPIO, WD1_ENCODER_D1_GPIO);
@@ -218,7 +222,6 @@ void task_encoder(void *pvParameters)
     }
 }
 
-
 void task_request(void *pvParameters)
 {
     data_packet_t requestData;
@@ -230,7 +233,6 @@ void task_request(void *pvParameters)
             char valor_str[100];
             convertir_a_string(requestData.data_decoded, valor_str, requestData.bits);
             valor_str[requestData.bits - 1] = '\0';
-            printf("Cadena de valores: %s\n", valor_str);
 
             char port_str[5]; 
             snprintf(port_str, sizeof(port_str), "%u", requestData.port);
@@ -241,6 +243,8 @@ void task_request(void *pvParameters)
         }
     }
 }
+
+
 
 
 void queue_create(){
@@ -271,10 +275,70 @@ void queue_create(){
     }
 }
 
+
+
+void setUp(void) {
+    // Set up any necessary resources before each test
+}
+
+void tearDown(void) {
+    // Clean up any resources after each test
+}
+
+
+
+void test_convertir_a_string(void) {
+    uint8_t data[4] = {1, 2, 3, 4};
+    char result[20];
+    convertir_a_string(data, result, 4);
+
+    // Add assertions based on expected results
+    TEST_ASSERT_EQUAL_STRING("1234", result);
+}
+
+void test_selectWDPort(void) {
+    // Test case where cant_bits is in WD_PORT1_LONGITUDES
+    TEST_ASSERT_EQUAL_UINT8(1, selectWDPort(32));
+
+    // Test case where cant_bits is in WD_PORT2_LONGITUDES
+    TEST_ASSERT_EQUAL_UINT8(2, selectWDPort(35));
+
+    // Test case where cant_bits is not in either array
+    TEST_ASSERT_EQUAL_UINT8(0, selectWDPort(50));
+}
+
+void test_procesarValor(void) {
+    uint8_t data0[] = {1, 0, 1, 1, 0, 0, 1, 0}; // Example data0
+    uint8_t result0 = procesarValor(data0, 8);
+    TEST_ASSERT_EQUAL_UINT8(0, result0); // Assuming it matches one of the cases in your switch statement
+
+    uint8_t data1[] = {1, 0, 1, 1, 0, 0, 1, 0, 1, 0, 1, 1, 0, 0, 1, 0, 1, 0, 1, 1, 0, 0, 1, 0, 1, 0, 1, 1, 0, 0, 1, 0}; // Example data0
+    uint8_t result1 = procesarValor(data1, 32);
+    TEST_ASSERT_EQUAL_UINT8(1, result1); // Assuming it matches one of the cases in your switch statement
+
+    uint8_t data2[] = {1, 0, 1, 1, 0, 0, 1, 0, 1, 0, 1, 1, 0, 0, 1, 0, 1, 0, 1, 1, 0, 0, 1, 0, 1, 0, 1, 1, 0, 0, 1, 0, 1, 0, 1}; // Example data0
+    uint8_t result2 = procesarValor(data2, 35);
+    TEST_ASSERT_EQUAL_UINT8(2, result2); // Assuming it matches one of the cases in your switch statement
+}
+
+int unity_test_init(){
+    UNITY_BEGIN();
+
+    // Run the tests
+    RUN_TEST(test_convertir_a_string);
+    RUN_TEST(test_selectWDPort);
+    RUN_TEST(test_procesarValor);
+
+
+    return UNITY_END();
+}
+
 void app_main()
 {
     
     IS_REQUEST_ACTIVATED ? wifi_init() : 0;
+
+    IS_TEST_ACTIVATED ? unity_test_init() : 0;
 
 
     queue_create();

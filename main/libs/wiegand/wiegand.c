@@ -75,8 +75,9 @@ static void isr_handler(void *arg)
     if (d0 == d1)
         return;
     // overflow
-    if (reader->bits >= reader->size * 8)
+    if (reader->bits >= reader->size * 8){
         return;
+    }
 
     esp_timer_stop(reader->timer);
 
