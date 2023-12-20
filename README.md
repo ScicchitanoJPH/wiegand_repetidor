@@ -32,4 +32,3 @@ Este código en C tiene como objetivo automatizar el acceso de dos empresas dist
 - El código utiliza tareas y colas FreeRTOS para procesamiento asíncrono.
 - La función `procesarValor` selecciona el puerto Wiegand adecuado según el formato de la tarjeta y retransmite los datos a la puerta correspondiente.
 
-Siéntete libre de adaptar el código según los formatos de tarjeta y la configuración específica de tu sistema.

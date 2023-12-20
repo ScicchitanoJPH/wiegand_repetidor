@@ -6,6 +6,7 @@
 #include "libs/wiegand_sender/wiegand_sender.h"
 #include "libs/WIFI_driver/WIFI_driver.h"
 #include "libs/http_request_driver/http_request_driver.h"
+#include "libs/bluetooth/bluetooth.h"
 #include <esp_log.h>
 #include <string.h>
 #include "esp_event_loop.h"
@@ -21,6 +22,14 @@
 #define WD2_ENCODER_D0_GPIO 18
 #define WD2_ENCODER_D1_GPIO 19
 
+// Define the GPIO pins
+#define LED_PIN_RECV GPIO_NUM_21    // Replace with the actual GPIO pin for receiving LED
+#define LED_PIN_SEND1 GPIO_NUM_22   // Replace with the actual GPIO pin for sending LED 1
+#define LED_PIN_SEND2 GPIO_NUM_23   // Replace with the actual GPIO pin for sending LED 2
+
+#define LED_ON false
+#define LED_OFF true
+
 // Define la etiqueta para la tarea
 #define TAG_ENCODER_TASK "task_encoder"
 #define TAG_DECODER_TASK "task_decoder"
@@ -31,15 +40,17 @@
 #define IS_TEST_ACTIVATED false
 
 
+
+
 #define MIN_CANTIDAD_BITS_VALIDO 20
 
 #define WD_PORT1_LONGITUDES \
     {                       \
-        32, 26, 37          \
+        32, 26, 37           \
     }
 #define WD_PORT2_LONGITUDES \
     {                       \
-        35, 48              \
+        48, 35           \
     }
 
 
@@ -48,7 +59,7 @@ static QueueHandle_t queue = NULL;
 static QueueHandle_t queue_send_data = NULL;
 static QueueHandle_t queue_request_data = NULL;
 
-// Single data packet
+// Single data packete
 typedef struct
 {
     uint8_t data[CONFIG_EXAMPLE_BUF_SIZE];
@@ -57,7 +68,7 @@ typedef struct
     uint8_t port;
 } data_packet_t;
 
-
+char *bleDataString;
 
 
 
@@ -132,15 +143,19 @@ uint8_t procesarValor(uint8_t *valor, size_t cant_bits)
     switch (senderWDPort)
     {
     case 1:
-        ESP_LOGE(TAG_ENCODER_TASK, "ZKTECO Card");
-        ESP_LOGE(TAG_ENCODER_TASK, "Enviando wiegand puerto 1");
+        gpio_set_level(LED_PIN_SEND1, LED_OFF);
+        /*ESP_LOGE(TAG_ENCODER_TASK, "TARJETA DE WEWORK");
+        ESP_LOGE(TAG_ENCODER_TASK, "Enviando wiegand puerto 1");*/
+        send_data_bluetooth((char *) "PUERTO 1\n");
         encoderWiegandBits(valor, cant_bits, WD1_ENCODER_D0_GPIO, WD1_ENCODER_D1_GPIO, TAG_ENCODER_TASK);
         ESP_LOGE(TAG_ENCODER_TASK, "Enviado");
         break;
 
     case 2:
-        ESP_LOGE(TAG_ENCODER_TASK, "WHITE Card");
-        ESP_LOGE(TAG_ENCODER_TASK, "Enviando wiegand puerto 2");
+        gpio_set_level(LED_PIN_SEND2, LED_OFF);
+        // ESP_LOGE(TAG_ENCODER_TASK, "WHITE Card");
+        // ESP_LOGE(TAG_ENCODER_TASK, "Enviando wiegand puerto 2");
+        send_data_bluetooth((char *) "PUERTO 2\n");
         encoderWiegandBits(valor, cant_bits, WD2_ENCODER_D0_GPIO, WD2_ENCODER_D1_GPIO, TAG_ENCODER_TASK);
         ESP_LOGE(TAG_ENCODER_TASK, "Enviado");
         break;
@@ -149,6 +164,7 @@ uint8_t procesarValor(uint8_t *valor, size_t cant_bits)
         break;
     }
 
+    
     return senderWDPort;
 }
 
@@ -169,25 +185,52 @@ void task_decoder(void *arg)
     {
         ESP_LOGI(TAG_DECODER_TASK, "Waiting for Wiegand data...");
         xQueueReceive(queue, &p, portMAX_DELAY);
+        gpio_set_level(LED_PIN_RECV, LED_ON);
+        xQueueSend(queue_send_data, &p, portMAX_DELAY);
 
         if (p.bits >= MIN_CANTIDAD_BITS_VALIDO && p.bits <= 40)
         {
             // dump received data
-            printf("==========================================\n");
-            printf("Bits received: %d\n", p.bits);
-            printf("Received data:");
+            send_data_bluetooth("==========================================\n");
+            send_data_bluetooth("Bits received:");
+            // send_data_bluetooth((char *)p.bits);
+            send_data_bluetooth("\n");
+            send_data_bluetooth("Received data:");
             int bytes = p.bits / 8;
             int tail = p.bits % 8;
-            for (size_t i = 0; i < bytes + (tail ? 1 : 0); i++)
+
+            char bitBuffer[p.bits + 1];  // +1 for null terminator
+            size_t posValor = 0;
+
+            for (size_t i = 0; i < bytes + (tail ? 1 : 0); i++){
                 for (int j = 7; j >= 0; j--)
                 {
-                    printf("%d", (p.data[i] >> j) & 1);
+                    ((p.data[i] >> j) & 1) ? printf("1") : printf("0");
+                    posValor = (posValor < p.bits) ? posValor + 1 : posValor;
+                    if (posValor >= p.bits) {
+                        break;  // Exit the inner loop when posValor reaches or exceeds p.bits
+                    }
+                    
                 }
-            printf("\n==========================================\n");
-            xQueueSend(queue_send_data, &p, portMAX_DELAY);
+                if (posValor >= p.bits) {
+                    break;  // Exit the inner loop when posValor reaches or exceeds p.bits
+                }
+            }
+                
+
+            bitBuffer[p.bits] = '\0';  // Null-terminate the string
+
+            send_data_bluetooth(bitBuffer);
+            send_data_bluetooth("\n==========================================\n");
+            
+            vTaskDelay(pdMS_TO_TICKS(1000));
+            gpio_set_level(LED_PIN_RECV, LED_OFF);
         }
     }
 }
+
+
+
 
 void task_encoder(void *pvParameters)
 {
@@ -217,7 +260,10 @@ void task_encoder(void *pvParameters)
 
             IS_REQUEST_ACTIVATED ? xQueueSend(queue_request_data, &receivedData, portMAX_DELAY) : 0;
 
+            
             vTaskDelay(pdMS_TO_TICKS(1000));
+            gpio_set_level(LED_PIN_SEND1, LED_ON);
+            gpio_set_level(LED_PIN_SEND2, LED_ON);
         }
     }
 }
@@ -333,8 +379,64 @@ int unity_test_init(){
     return UNITY_END();
 }
 
+
+void LEDs_init(){
+    gpio_config_t io_conf_recv = {
+        .pin_bit_mask = (1ULL<<LED_PIN_RECV),
+        .mode = GPIO_MODE_OUTPUT,
+        .intr_type = GPIO_INTR_DISABLE,
+        .pull_up_en = GPIO_PULLUP_DISABLE,
+        .pull_down_en = GPIO_PULLDOWN_DISABLE,
+    };
+    gpio_config(&io_conf_recv);
+    gpio_set_level(LED_PIN_RECV, LED_OFF);
+
+    gpio_config_t io_conf_send1 = {
+        .pin_bit_mask = (1ULL<<LED_PIN_SEND1),
+        .mode = GPIO_MODE_OUTPUT,
+        .intr_type = GPIO_INTR_DISABLE,
+        .pull_up_en = GPIO_PULLUP_DISABLE,
+        .pull_down_en = GPIO_PULLDOWN_DISABLE,
+    };
+    gpio_config(&io_conf_send1);
+    gpio_set_level(LED_PIN_SEND1, LED_OFF);
+
+    gpio_config_t io_conf_send2 = {
+        .pin_bit_mask = (1ULL<<LED_PIN_SEND2),
+        .mode = GPIO_MODE_OUTPUT,
+        .intr_type = GPIO_INTR_DISABLE,
+        .pull_up_en = GPIO_PULLUP_DISABLE,
+        .pull_down_en = GPIO_PULLDOWN_DISABLE,
+    };
+    gpio_config(&io_conf_send2);
+    gpio_set_level(LED_PIN_SEND2, LED_OFF);
+
+}
+
+
+
+void processBleData(char *data)
+{
+    if (strcmp(data, "") != 0)
+    {
+        if (strcasecmp(data, "1") == 0)
+        {
+            send_data_over_bluetooth((uint8_t *)"Se habilita el auto", 10);
+        }
+        if (strcasecmp(data, "0") == 0)
+        {
+            send_data_over_bluetooth((uint8_t *)"Se deshabilita el auto", 10);
+        }
+
+        data[0] = '\0';
+    }
+}
+
 void app_main()
 {
+
+    bleDataString = init_bluetooth();
+    bleDataString[0] = '\0';
     
     IS_REQUEST_ACTIVATED ? wifi_init() : 0;
 
@@ -343,6 +445,9 @@ void app_main()
 
     queue_create();
 
+    LEDs_init();
+
+
 
     if(IS_REQUEST_ACTIVATED){
         xTaskCreatePinnedToCore(task_decoder, TAG_DECODER_TASK, configMINIMAL_STACK_SIZE * 4, NULL, 5, NULL, 1);
@@ -350,8 +455,15 @@ void app_main()
     }else{
         xTaskCreatePinnedToCore(task_decoder, TAG_DECODER_TASK, configMINIMAL_STACK_SIZE * 4, NULL, 5, NULL, 0);
     }
-    
+
     xTaskCreatePinnedToCore(task_encoder, TAG_ENCODER_TASK, configMINIMAL_STACK_SIZE * 4, NULL, 5, NULL, 1);
 
-    vTaskDelay(3000);
+    while (true)
+    {
+        processBleData(bleDataString);
+        vTaskDelay(3000);
+    }
+    
+
 }
+
