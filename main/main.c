@@ -205,7 +205,10 @@ void task_decoder(void *arg)
             for (size_t i = 0; i < bytes + (tail ? 1 : 0); i++){
                 for (int j = 7; j >= 0; j--)
                 {
-                    ((p.data[i] >> j) & 1) ? printf("1") : printf("0");
+                    bitBuffer[posValor] = ((p.data[i] >> j) & 1) ? '1' : '0';
+                    esp_rom_delay_us(500);
+                    /*Si la longitud del dato leido no es multiplo de 8, por ejemplo 35 bits, el for sigue hasta 40.
+                    Entonces a continuacion se valida que se haya llegado a la longitud de bits para no segui.*/                    
                     posValor = (posValor < p.bits) ? posValor + 1 : posValor;
                     if (posValor >= p.bits) {
                         break;  // Exit the inner loop when posValor reaches or exceeds p.bits
