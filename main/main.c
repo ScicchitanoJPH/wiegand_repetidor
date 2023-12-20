@@ -146,7 +146,6 @@ uint8_t procesarValor(uint8_t *valor, size_t cant_bits)
         gpio_set_level(LED_PIN_SEND1, LED_OFF);
         /*ESP_LOGE(TAG_ENCODER_TASK, "TARJETA DE WEWORK");
         ESP_LOGE(TAG_ENCODER_TASK, "Enviando wiegand puerto 1");*/
-        send_data_bluetooth((char *) "PUERTO 1\n");
         encoderWiegandBits(valor, cant_bits, WD1_ENCODER_D0_GPIO, WD1_ENCODER_D1_GPIO, TAG_ENCODER_TASK);
         ESP_LOGE(TAG_ENCODER_TASK, "Enviado");
         break;
@@ -155,7 +154,6 @@ uint8_t procesarValor(uint8_t *valor, size_t cant_bits)
         gpio_set_level(LED_PIN_SEND2, LED_OFF);
         // ESP_LOGE(TAG_ENCODER_TASK, "WHITE Card");
         // ESP_LOGE(TAG_ENCODER_TASK, "Enviando wiegand puerto 2");
-        send_data_bluetooth((char *) "PUERTO 2\n");
         encoderWiegandBits(valor, cant_bits, WD2_ENCODER_D0_GPIO, WD2_ENCODER_D1_GPIO, TAG_ENCODER_TASK);
         ESP_LOGE(TAG_ENCODER_TASK, "Enviado");
         break;
@@ -224,7 +222,7 @@ void task_decoder(void *arg)
             bitBuffer[p.bits] = '\0';  // Null-terminate the string
 
             send_data_bluetooth(bitBuffer);
-            send_data_bluetooth("\n==========================================\n");
+            
             
             vTaskDelay(pdMS_TO_TICKS(1000));
             gpio_set_level(LED_PIN_RECV, LED_OFF);
@@ -264,6 +262,9 @@ void task_encoder(void *pvParameters)
             IS_REQUEST_ACTIVATED ? xQueueSend(queue_request_data, &receivedData, portMAX_DELAY) : 0;
 
             
+            send_data_bluetooth("\nPUERTO : ");
+            (receivedData.port == 1) ? send_data_bluetooth("1") : send_data_bluetooth("2"); 
+            send_data_bluetooth("\n==========================================\n");
             vTaskDelay(pdMS_TO_TICKS(1000));
             gpio_set_level(LED_PIN_SEND1, LED_ON);
             gpio_set_level(LED_PIN_SEND2, LED_ON);
