@@ -419,19 +419,66 @@ void LEDs_init(){
 
 
 
+
+
+// Function to check if a string is in the format "number-number"
+int isValidFormat(const char *inputString) {
+    char *endptr;
+    long num1 = strtol(inputString, &endptr, 10);
+
+    // Check if the first part is a valid number and if the delimiter is '-'
+    if (*endptr == '-' && *endptr != '\0') {
+        long num2 = strtol(endptr + 1, &endptr, 10);
+
+        // Check if the second part is a valid number and if it reaches the end of the string
+        if (*endptr == '\0') {
+            return 1; // Valid format
+        }
+    }
+
+    return 0; // Invalid format
+}
+
+
+void separateString(char *inputString) {
+    // Copy the input string to a mutable buffer
+    char buffer[20];  // Adjust the size as needed
+    strncpy(buffer, inputString, sizeof(buffer) - 1);
+    buffer[sizeof(buffer) - 1] = '\0';
+
+    // Use strtok to tokenize the string based on '-'
+    char *token = strtok(buffer, "-");
+
+    // Check if the first token exists
+    if (token != NULL) {
+        // Do something with the first token (e.g., print it)
+        printf("Token 1: %s\n", token);
+
+        // Get the next token
+        token = strtok(NULL, "-");
+
+        // Check if the second token exists
+        if (token != NULL) {
+            // Do something with the second token (e.g., print it)
+            printf("Token 2: %s\n", token);
+        }
+    }
+}
+
+
+
+
+
 void processBleData(char *data)
 {
-    if (strcmp(data, "") != 0)
+    if (data[0] != '\0')
     {
-        if (strcasecmp(data, "1") == 0)
-        {
-            send_data_over_bluetooth((uint8_t *)"Se habilita el auto", 10);
+        if (isValidFormat(data)) {
+            separateString(data);
+        } else {
+            send_data_bluetooth("Error: Invalid format. Please use the format 'number-number'.\n");
+            // Handle the error accordingly
         }
-        if (strcasecmp(data, "0") == 0)
-        {
-            send_data_over_bluetooth((uint8_t *)"Se deshabilita el auto", 10);
-        }
-
         data[0] = '\0';
     }
 }
@@ -465,7 +512,7 @@ void app_main()
     while (true)
     {
         processBleData(bleDataString);
-        vTaskDelay(3000);
+        vTaskDelay(1000);
     }
     
 
