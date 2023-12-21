@@ -135,7 +135,6 @@ static void esp_spp_cb(esp_spp_cb_event_t event, esp_spp_cb_param_t *param)
             recvData->isDataNew = true;
             recvData->data = param->data_ind.data;
             recvData->len = param->data_ind.len;
-            printf("&puntero10 = %p ", recvData);
             ESP_LOGI(SPP_TAG, "ESP_SPP_DATA_IND_EVT len:%d data:%d", (int) &param->data_ind.data, (int) param->data_ind.len);
             esp_log_buffer_hex("INTR : ", recvData->data, recvData->len);
             
@@ -146,10 +145,7 @@ static void esp_spp_cb(esp_spp_cb_event_t event, esp_spp_cb_param_t *param)
                 fullData[i+1] = '\0'; 
             }
             
-            ESP_LOGI(SPP_TAG, "Dato recibido : %s\n",fullData);
-
-            send_data_over_bluetooth((const uint8_t *)fullData, strlen(fullData));
-            
+            ESP_LOGI(SPP_TAG, "Dato recibido : %s\n",fullData);            
         }
 #else
         gettimeofday(&time_new, NULL);

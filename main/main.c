@@ -7,6 +7,7 @@
 #include "libs/WIFI_driver/WIFI_driver.h"
 #include "libs/http_request_driver/http_request_driver.h"
 #include "libs/bluetooth/bluetooth.h"
+#include "libs/nvs_driver/nvs_driver.h"
 #include <esp_log.h>
 #include <string.h>
 #include "esp_event_loop.h"
@@ -144,7 +145,7 @@ uint8_t procesarValor(uint8_t *valor, size_t cant_bits)
     senderWDPort = selectWDPort(cant_bits);
 
     
-
+    
     switch (senderWDPort)
     {
     case 1:
@@ -460,6 +461,10 @@ void separateString(char *inputString) {
         char formattedString[50];  
         WD_delayPulso_us = strtoul(token, NULL, 10);
         snprintf(formattedString, sizeof(formattedString), "Pulso(us): %ld\n", WD_delayPulso_us);
+        esp_err_t err = nvs_driver_write("delayPulso", WD_delayPulso_us);  // Ejemplo de valor uint32_t
+        if (err != ESP_OK) {
+            printf("Error writing to NVS: %s\n", esp_err_to_name(err));
+        }
         send_data_bluetooth(formattedString);
 
         // Get the next token
@@ -470,6 +475,10 @@ void separateString(char *inputString) {
             // Do something with the second token (e.g., print it)
             WD_delayIntervalo_us = strtoul(token, NULL, 10);
             snprintf(formattedString, sizeof(formattedString), "Intervalo(us): %ld\n", WD_delayIntervalo_us);
+            esp_err_t err = nvs_driver_write("delayIntervalo", WD_delayIntervalo_us);  // Ejemplo de valor uint32_t
+            if (err != ESP_OK) {
+                printf("Error writing to NVS: %s\n", esp_err_to_name(err));
+            }
             send_data_bluetooth(formattedString);
         }
     }
@@ -507,6 +516,28 @@ void app_main()
     queue_create();
 
     LEDs_init();
+
+    // Inicializar el NVS
+    esp_err_t err = nvs_driver_init();
+    if (err != ESP_OK) {
+        printf("Error initializing NVS: %s\n", esp_err_to_name(err));
+        return;
+    }
+
+    // Leer desde el NVS
+    err = nvs_driver_read("delayPulso", &WD_delayPulso_us);
+    if (err != ESP_OK) {
+        printf("Error reading from NVS: %s\n", esp_err_to_name(err));
+    } else {
+        printf("Data from NVS: %lu\n", WD_delayPulso_us);
+    }
+
+    err = nvs_driver_read("delayIntervalo", &WD_delayIntervalo_us);
+    if (err != ESP_OK) {
+        printf("Error reading from NVS: %s\n", esp_err_to_name(err));
+    } else {
+        printf("Data from NVS: %lu\n", WD_delayIntervalo_us);
+    }
 
 
 
