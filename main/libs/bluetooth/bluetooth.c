@@ -70,6 +70,15 @@ static void print_speed(void)
     time_old.tv_usec = time_new.tv_usec;
 }
 
+void send_data_bluetooth(char *data) {
+    if (connected) {
+        esp_spp_write(spp_param.write.handle, strlen(data), (uint8_t*)data);
+        //printf("Sent data: %s\n", data);
+    } else {
+        printf("Not connected, can't send data\n");
+    }
+}
+
 static void esp_spp_cb(esp_spp_cb_event_t event, esp_spp_cb_param_t *param)
 {
     char bda_str[18] = {0};
@@ -162,6 +171,7 @@ static void esp_spp_cb(esp_spp_cb_event_t event, esp_spp_cb_param_t *param)
         gettimeofday(&time_old, NULL);
         connected = true;
         ESP_LOGE(SPP_TAG, "connected = true;");
+        send_data_bluetooth("Cambie el formato de los delay de pulso en intervalo con el siguiente formato: delayPulso-delayIntervalo, donde ambos son numeros\n");
         break;
     case ESP_SPP_SRV_STOP_EVT:
         ESP_LOGI(SPP_TAG, "ESP_SPP_SRV_STOP_EVT");
@@ -234,14 +244,7 @@ void esp_bt_gap_cb(esp_bt_gap_cb_event_t event, esp_bt_gap_cb_param_t *param)
 
 
 
-void send_data_bluetooth(char *data) {
-    if (connected) {
-        esp_spp_write(spp_param.write.handle, strlen(data), (uint8_t*)data);
-        //printf("Sent data: %s\n", data);
-    } else {
-        printf("Not connected, can't send data\n");
-    }
-}
+
 
 
 
