@@ -67,7 +67,7 @@ void recorrerCharArray(char *valor) {
 }
 
 
-void encoderWiegandBits(const uint8_t *valor,size_t longitudBits, gpio_num_t gpio_0, gpio_num_t gpio_1,const char *TAG) {
+void encoderWiegandBits(const uint8_t *valor,size_t longitudBits, gpio_num_t gpio_0, gpio_num_t gpio_1,uint32_t delayPulso_us, uint32_t delayIntervalo_us, const char *TAG) {
 
 
     for (size_t i = 0; i < longitudBits; i++) {
@@ -78,14 +78,14 @@ void encoderWiegandBits(const uint8_t *valor,size_t longitudBits, gpio_num_t gpi
         // Procesa el bit, por ejemplo, imprímelo
         if (bitActual == 0) {
             gpio_set_level(gpio_0, 0);
-            esp_rom_delay_us(WD_W2_delayPulso_us);
+            esp_rom_delay_us(delayPulso_us);
             gpio_set_level(gpio_0, 1);
-            esp_rom_delay_us(WD_W2_delayIntervalo_us);
+            esp_rom_delay_us(delayIntervalo_us);
         } else {
             gpio_set_level(gpio_1, 0);
-            esp_rom_delay_us(WD_W2_delayPulso_us);
+            esp_rom_delay_us(delayPulso_us);
             gpio_set_level(gpio_1, 1);
-            esp_rom_delay_us(WD_W2_delayIntervalo_us);
+            esp_rom_delay_us(delayIntervalo_us);
         }
     }
 }

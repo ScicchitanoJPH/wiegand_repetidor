@@ -54,6 +54,8 @@
     }
 
 
+
+
 static wiegand_reader_t reader;
 static QueueHandle_t queue = NULL;
 static QueueHandle_t queue_send_data = NULL;
@@ -69,6 +71,9 @@ typedef struct
 } data_packet_t;
 
 char *bleDataString;
+
+uint32_t WD_delayPulso_us = 100;  
+uint32_t WD_delayIntervalo_us = 5000;
 
 
 
@@ -146,7 +151,7 @@ uint8_t procesarValor(uint8_t *valor, size_t cant_bits)
         gpio_set_level(LED_PIN_SEND1, LED_OFF);
         /*ESP_LOGE(TAG_ENCODER_TASK, "TARJETA DE WEWORK");
         ESP_LOGE(TAG_ENCODER_TASK, "Enviando wiegand puerto 1");*/
-        encoderWiegandBits(valor, cant_bits, WD1_ENCODER_D0_GPIO, WD1_ENCODER_D1_GPIO, TAG_ENCODER_TASK);
+        encoderWiegandBits(valor, cant_bits, WD1_ENCODER_D0_GPIO, WD1_ENCODER_D1_GPIO, WD_delayPulso_us, WD_delayIntervalo_us, TAG_ENCODER_TASK);
         ESP_LOGE(TAG_ENCODER_TASK, "Enviado");
         break;
 
@@ -154,7 +159,7 @@ uint8_t procesarValor(uint8_t *valor, size_t cant_bits)
         gpio_set_level(LED_PIN_SEND2, LED_OFF);
         // ESP_LOGE(TAG_ENCODER_TASK, "WHITE Card");
         // ESP_LOGE(TAG_ENCODER_TASK, "Enviando wiegand puerto 2");
-        encoderWiegandBits(valor, cant_bits, WD2_ENCODER_D0_GPIO, WD2_ENCODER_D1_GPIO, TAG_ENCODER_TASK);
+        encoderWiegandBits(valor, cant_bits, WD2_ENCODER_D0_GPIO, WD2_ENCODER_D1_GPIO, WD_delayPulso_us, WD_delayIntervalo_us, TAG_ENCODER_TASK);
         ESP_LOGE(TAG_ENCODER_TASK, "Enviado");
         break;
 
@@ -452,7 +457,10 @@ void separateString(char *inputString) {
     // Check if the first token exists
     if (token != NULL) {
         // Do something with the first token (e.g., print it)
-        printf("Token 1: %s\n", token);
+        char formattedString[50];  
+        WD_delayPulso_us = strtoul(token, NULL, 10);
+        snprintf(formattedString, sizeof(formattedString), "Pulso(us): %ld\n", WD_delayPulso_us);
+        send_data_bluetooth(formattedString);
 
         // Get the next token
         token = strtok(NULL, "-");
@@ -460,7 +468,9 @@ void separateString(char *inputString) {
         // Check if the second token exists
         if (token != NULL) {
             // Do something with the second token (e.g., print it)
-            printf("Token 2: %s\n", token);
+            WD_delayIntervalo_us = strtoul(token, NULL, 10);
+            snprintf(formattedString, sizeof(formattedString), "Intervalo(us): %ld\n", WD_delayIntervalo_us);
+            send_data_bluetooth(formattedString);
         }
     }
 }
